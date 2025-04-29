@@ -1,4 +1,4 @@
-package updater
+package dns
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-func UpdateIPv4Record(ctx context.Context, apiToken, fqdn, ipv4 string) error {
+func UpdateRecords(ctx context.Context, apiToken, fqdn, ipv4 string, port int) error {
 	api, err := cloudflare.NewWithAPIToken(apiToken)
 	if err != nil {
 		return err
@@ -19,12 +19,19 @@ func UpdateIPv4Record(ctx context.Context, apiToken, fqdn, ipv4 string) error {
 	}
 	rc := cloudflare.ZoneIdentifier(zoneID)
 
-	recordID, err := getRecordId(ctx, api, rc, fqdn)
+	aRecordID, err := getRecordId(ctx, api, rc, "A", fqdn)
 	if err != nil {
 		return err
 	}
 
-	return updateIPv4Record(ctx, api, rc, recordID, ipv4)
+	txtRecordID, err := getRecordId(ctx, api, rc, "TXT", fqdn)
+	if err != nil {
+		return err
+	}
+
+	err = updateTXTRecord(ctx, api, rc, txtRecordID, port)
+
+	return updateIPv4Record(ctx, api, rc, aRecordID, ipv4)
 }
 
 func getZoneId(api *cloudflare.API, fqdn string) (string, error) {
@@ -39,16 +46,16 @@ func getZoneId(api *cloudflare.API, fqdn string) (string, error) {
 	return "", fmt.Errorf("zone not found for name: %s", fqdn)
 }
 
-func getRecordId(ctx context.Context, api *cloudflare.API, rc *cloudflare.ResourceContainer, fqdn string) (string, error) {
+func getRecordId(ctx context.Context, api *cloudflare.API, rc *cloudflare.ResourceContainer, typ, fqdn string) (string, error) {
 	records, _, err := api.ListDNSRecords(ctx, rc, cloudflare.ListDNSRecordsParams{
 		Name: fqdn,
-		Type: "A",
+		Type: typ,
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to list DNS records: %w", err)
 	}
 	if len(records) == 0 {
-		return "", fmt.Errorf("no DNS record found for name: %s", fqdn)
+		return "", fmt.Errorf("no DNS record found for name=%s, type=%s", fqdn, typ)
 	}
 	if len(records) > 1 {
 		return "", fmt.Errorf("multiple DNS records found for name: %s", fqdn)
@@ -68,6 +75,22 @@ func updateIPv4Record(ctx context.Context, api *cloudflare.API, rc *cloudflare.R
 	_, err := api.UpdateDNSRecord(ctx, rc, params)
 	if err != nil {
 		return fmt.Errorf("failed to update DNS record: %w", err)
+	}
+
+	return nil
+}
+
+func updateTXTRecord(ctx context.Context, api *cloudflare.API, rc *cloudflare.ResourceContainer, recordID string, port int) error {
+	content := fmt.Sprintf("\"kcp-port=%d\"", port)
+	params := cloudflare.UpdateDNSRecordParams{
+		ID:      recordID,
+		Type:    "TXT",
+		Content: content,
+	}
+
+	_, err := api.UpdateDNSRecord(ctx, rc, params)
+	if err != nil {
+		return fmt.Errorf("failed to update TXT record: %w", err)
 	}
 
 	return nil

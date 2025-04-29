@@ -13,8 +13,8 @@
           inherit system;
           overlays = [
             (final: _: {
-              ddns-updater = final.buildGoModule {
-                pname = "ddns-updater";
+              natt = final.buildGoModule {
+                pname = "natt";
                 version = "0.0.1";
                 src = final.lib.sourceByRegex ./. [
                   "go.mod"
@@ -24,8 +24,8 @@
                   "internal"
                   "internal/.*"
                 ];
-                subPackages = [ "cmd/ddns-updater" ];
-                vendorHash = "sha256-90UlMI7XslN/f3pK3RY0rOywS7Ws4IbCMmCdXBP1tdQ=";
+                subPackages = [ "cmd/nattc" "cmd/natts" ];
+                vendorHash = "sha256-Yk2gx1c/HcwQ6TgT1DX+sUgKIrcugG6gD9QWTlFZlwM=";
                 proxyVendor = true;
                 env.CGO_ENABLED = 0;
               };
@@ -46,8 +46,8 @@
       in
       {
         packages = {
-          default = pkgs.ddns-updater;
-          arm64 = pkgs.pkgsCross.aarch64-multiplatform.ddns-updater;
+          default = pkgs.natt;
+          arm64 = pkgs.pkgsCross.aarch64-multiplatform.natt;
         };
         devShells.default = shell;
       }
