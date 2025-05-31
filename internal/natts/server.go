@@ -21,10 +21,12 @@ type Server struct {
 	listener   *kcp.Listener
 
 	// Connection tracking
-	connMutex    sync.RWMutex
-	activeConns  int
-	lastConnTime time.Time
-	localPort    int
+	connMutex         sync.RWMutex
+	activeConns       int
+	lastConnTime      time.Time
+	localPort         int
+	acceptLoopCtx     context.Context
+	acceptLoopCancel  context.CancelFunc
 }
 
 type Config struct {
@@ -96,8 +98,8 @@ func (s *Server) Start(ctx context.Context, listenAddr string) error {
 	// Start connection monitoring
 	go s.connectionMonitor(ctx)
 
-	// Accept connections
-	go s.acceptLoop(ctx)
+	// Start accept loop
+	s.startAcceptLoop()
 
 	return nil
 }
@@ -121,6 +123,26 @@ func (s *Server) discoverAndRegister(localPort int) error {
 	return nil
 }
 
+func (s *Server) startAcceptLoop() {
+	// Cancel any existing accept loop
+	if s.acceptLoopCancel != nil {
+		s.acceptLoopCancel()
+	}
+	
+	// Create new context for accept loop
+	s.acceptLoopCtx, s.acceptLoopCancel = context.WithCancel(context.Background())
+	
+	// Start accept loop
+	go s.acceptLoop(s.acceptLoopCtx)
+}
+
+func (s *Server) stopAcceptLoop() {
+	if s.acceptLoopCancel != nil {
+		s.acceptLoopCancel()
+		s.acceptLoopCancel = nil
+	}
+}
+
 func (s *Server) acceptLoop(ctx context.Context) {
 	for {
 		select {
@@ -129,10 +151,21 @@ func (s *Server) acceptLoop(ctx context.Context) {
 		default:
 		}
 
+		// Check if listener is available
+		if s.listener == nil {
+			return
+		}
+
 		conn, err := s.listener.AcceptKCP()
 		if err != nil {
-			log.Printf("natts: failed to accept connection: %v", err)
-			continue
+			// If listener is closed, exit gracefully
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				log.Printf("natts: failed to accept connection: %v", err)
+				return
+			}
 		}
 
 		go s.handleConnection(conn)
@@ -209,26 +242,53 @@ func (s *Server) connectionMonitor(ctx context.Context) {
 			lastConnTime := s.lastConnTime
 			s.connMutex.RUnlock()
 
-			// If no active connections and it's been 10 minutes since last connection
-			if activeConns == 0 && time.Since(lastConnTime) > 10*time.Minute {
-				log.Printf("natts: no connections for 10 minutes, restarting STUN discovery")
+			// If no active connections and it's been 5 minutes since last connection
+			if activeConns == 0 && time.Since(lastConnTime) > 5*time.Minute {
+				log.Printf("natts: no connections for 5 minutes, restarting STUN discovery")
+
+				// Stop accept loop to prevent panic
+				s.stopAcceptLoop()
+
+				// Close current listener to free up the port
+				if s.listener != nil {
+					s.listener.Close()
+					s.listener = nil
+				}
 
 				// Restart STUN discovery and DNS registration
 				if err := s.discoverAndRegister(s.localPort); err != nil {
 					log.Printf("natts: failed to restart STUN discovery: %v", err)
 				} else {
-					// Update last connection time to prevent immediate re-trigger
-					s.connMutex.Lock()
-					s.lastConnTime = time.Now()
-					s.connMutex.Unlock()
 					log.Printf("natts: STUN discovery completed")
 				}
+
+				// Restart KCP listener on the same port
+				listenAddr := fmt.Sprintf(":%d", s.localPort)
+				listener, err := kcp.ListenWithOptions(listenAddr, nil, 10, 3)
+				if err != nil {
+					log.Printf("natts: failed to restart KCP listener: %v", err)
+				} else {
+					s.listener = listener
+					log.Printf("natts: KCP listener restarted on %s", listenAddr)
+					
+					// Restart accept loop
+					s.startAcceptLoop()
+				}
+
+				// Update last connection time to prevent immediate re-trigger
+				s.connMutex.Lock()
+				s.lastConnTime = time.Now()
+				s.connMutex.Unlock()
 			}
 		}
 	}
 }
 
 func (s *Server) Close() error {
+	// Stop accept loop first
+	s.stopAcceptLoop()
+	
+	// Then close listener
 	if s.listener != nil {
 		return s.listener.Close()
 	}
