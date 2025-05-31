@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Go-based NAT traversal system for SSH connections. The current implementation includes a DDNS updater, with plans to extend it into a complete NAT traversal solution using UDP proxies.
+This is a Go-based NAT traversal system for SSH connections using Cloudflare DNS for service discovery. The system provides a complete NAT traversal solution using reliable UDP (KCP) proxies.
 
 ### Current State
 
@@ -49,14 +49,13 @@ The codebase follows a simple package-based structure:
 
 - `internal/stun/ipv4.go` - STUN client for IP/port discovery via TCP connection to STUN server
 - `internal/dns/updater.go` - Cloudflare DNS API client for updating A and TXT records
-- `internal/sshd/sshd.go` - SSH daemon configuration and restart functionality
+- `internal/dns/resolver.go` - DNS resolver for finding natts server IP/port from FQDN and TXT records
 - `internal/natts/server.go` - KCP-based UDP-to-TCP proxy server implementation
 - `internal/nattc/client.go` - KCP-based TCP-to-UDP proxy client implementation (server mode)
 - `internal/nattc/proxy.go` - KCP-based proxy client for SSH ProxyCommand mode
 
 ### Workflows
 
-- **DDNS Updater**: STUN discovery → DNS record updates → SSH daemon reconfiguration
 - **natts**: KCP listener → STUN discovery → DNS registration → SSH proxy
 - **nattc (Server Mode)**: TCP listener → DNS resolution → KCP connection → SSH proxy
 - **nattc (ProxyCommand Mode)**: stdin/stdout ↔ DNS resolution → KCP connection → SSH proxy
@@ -79,6 +78,9 @@ go build -o nattc ./cmd/nattc
 
 # Run tests
 go test ./...
+
+# Run end-to-end tests (run after any modifications)
+nix develop -c ./test-e2e.sh
 
 # Run applications (require environment variables)
 ./natts         # NAT traversal server (NAT内で実行)
@@ -155,11 +157,18 @@ ssh -o ProxyCommand='./nattc --proxy --target mypc.example.com' user@dummy
 
 ## Dependencies
 
+- **Cloudflare DNS** - Required for DNS record management and service discovery
 - `github.com/cloudflare/cloudflare-go` - Cloudflare API client
 - `github.com/pion/stun` - STUN protocol implementation
 - `github.com/xtaci/kcp-go/v5` - KCP (reliable UDP) library for secure, ordered UDP transmission
 
 The project uses Go modules and Nix flakes for dependency management and reproducible builds.
+
+### External Service Requirements
+
+- **Cloudflare account** with API token having DNS edit permissions
+- **Domain managed by Cloudflare** for DNS record updates
+- **STUN server access** for NAT traversal (uses public STUN servers)
 
 ## Development Roadmap
 
@@ -176,5 +185,7 @@ The project uses Go modules and Nix flakes for dependency management and reprodu
 - [x] Update build system to include both natts and nattc binaries
 - [x] Update documentation to explain the new proxy architecture and usage
 - [x] Fix internal/dns/updater.go to create new DNS records when they don't exist instead of erroring
+- [x] Add DNS resolver functionality for nattc to find natts server via DNS
+- [x] Add end-to-end testing script for complete workflow validation
 
 ### TODO
