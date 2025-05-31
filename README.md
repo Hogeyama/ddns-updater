@@ -1,5 +1,7 @@
 # NAT Traversal SSH System
 
+**Note**: This is a personal project designed for my specific use case and environment. It may not be suitable for general use without modifications.
+
 A Go-based NAT traversal system for SSH connections using Cloudflare DNS for service discovery and KCP (reliable UDP) for tunneling.
 
 ## Architecture
