@@ -153,10 +153,9 @@ The project uses Go modules and Nix flakes for dependency management and reprodu
 - [x] Add error handling and logging to both proxy components
 - [x] Update build system to include both natts and nattc binaries
 - [x] Update documentation to explain the new proxy architecture and usage
+- [x] Fix internal/dns/updater.go to create new DNS records when they don't exist instead of erroring
 
 ### TODO
 
-- [ ] internal/dns/updater.goは既存のレコードが存在しない場合にエラーになる。存在しなければ新規作成すべき
 - [ ] internal/nattc/client.goとinternal/nattc/proxy.goの実装に重複がある
 - [ ] 環境変数だけではなくコマンドライン引数で設定できるようにする
-
