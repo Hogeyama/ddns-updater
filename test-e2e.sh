@@ -29,7 +29,7 @@ cleanup() {
 trap cleanup EXIT INT TERM
 
 echo "Starting natts server locally..."
-./result/bin/natts -listen ":$NATTS_PORT" &
+./result/bin/natts --listen ":$NATTS_PORT" &
 NATTS_PID=$!
 
 # Wait for natts to start
@@ -37,7 +37,7 @@ sleep 2
 
 echo "Testing SSH connection through NAT traversal..."
 RESULT=$(ssh -i "$TEST_SSH_KEY" "$TEST_USER@$TEST_HOST" \
-  ssh -o ProxyCommand="'/tmp/nattc -proxy -target $TARGET_FQDN'" \
+  ssh -o ProxyCommand="'/tmp/nattc --proxy --target $TARGET_FQDN'" \
   "$TARGET_USER@$TARGET_FQDN" \
   echo OK)
 

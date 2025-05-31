@@ -85,14 +85,33 @@ go test ./...
 ./nattc         # NAT traversal client (外部ホストで実行)
 ```
 
-## Required Environment Variables
+## Configuration
+
+Both applications support configuration via command-line flags or environment variables. Command-line flags take precedence over environment variables.
 
 ### For natts
+
+Command-line flags:
+
+- `--cf-token` - Cloudflare API token with DNS edit permissions
+- `--target-fqdn` - Fully qualified domain name to update
+- `--ssh-target` - SSH server to proxy to (default: "127.0.0.1:22")
+- `--listen` - Address to listen on (default: ":0")
+
+Environment variables (fallback):
 
 - `CF_API_TOKEN` - Cloudflare API token with DNS edit permissions
 - `TARGET_FQDN` - Fully qualified domain name to update
 
 ### For nattc
+
+Command-line flags:
+
+- `--target` - Target FQDN to connect to (natts server)
+- `--listen` - Address to listen on for SSH connections in server mode (default: ":10022")
+- `--proxy` - Run in ProxyCommand mode (stdin/stdout)
+
+Environment variables (fallback):
 
 - `TARGET_FQDN` - FQDN to resolve for connecting to natts server
 
@@ -102,7 +121,10 @@ go test ./...
 
 ```bash
 # Start natts server that will register itself in DNS
-CF_API_TOKEN=your_token TARGET_FQDN=mypc.example.com ./natts -ssh-target 127.0.0.1:22 -listen :0
+./natts --cf-token your_token --target-fqdn mypc.example.com --ssh-target 127.0.0.1:22 --listen :0
+
+# Or using environment variables
+CF_API_TOKEN=your_token TARGET_FQDN=mypc.example.com ./natts --ssh-target 127.0.0.1:22 --listen :0
 ```
 
 ### Running nattc (on external machine, e.g., EC2)
@@ -111,7 +133,7 @@ CF_API_TOKEN=your_token TARGET_FQDN=mypc.example.com ./natts -ssh-target 127.0.0
 
 ```bash
 # Start nattc client that connects to natts via DNS resolution
-./nattc -listen :10022 -target mypc.example.com
+./nattc --listen :10022 --target mypc.example.com
 
 # Now SSH to the NAT-ed machine via the proxy
 ssh -p 10022 localhost
@@ -121,11 +143,11 @@ ssh -p 10022 localhost
 
 ```bash
 # Direct SSH connection using ProxyCommand
-ssh -o ProxyCommand='./nattc -proxy -target mypc.example.com' user@dummy
+ssh -o ProxyCommand='./nattc --proxy --target mypc.example.com' user@dummy
 
 # Or add to ~/.ssh/config:
 # Host mypc
-#     ProxyCommand /path/to/nattc -proxy -target mypc.example.com
+#     ProxyCommand /path/to/nattc --proxy --target mypc.example.com
 #     User your_username
 #
 # Then simply: ssh mypc
@@ -156,6 +178,3 @@ The project uses Go modules and Nix flakes for dependency management and reprodu
 - [x] Fix internal/dns/updater.go to create new DNS records when they don't exist instead of erroring
 
 ### TODO
-
-- [ ] internal/nattc/client.goとinternal/nattc/proxy.goの実装に重複がある
-- [ ] 環境変数だけではなくコマンドライン引数で設定できるようにする

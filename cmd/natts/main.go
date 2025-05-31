@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -18,6 +19,18 @@ func main() {
 		targetFQDN = flag.String("target-fqdn", "", "FQDN to register in DNS")
 		cfToken    = flag.String("cf-token", "", "Cloudflare API token")
 	)
+	// Custom usage function
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  --cf-token string\n")
+		fmt.Fprintf(os.Stderr, "    \tCloudflare API token\n")
+		fmt.Fprintf(os.Stderr, "  --listen string\n")
+		fmt.Fprintf(os.Stderr, "    \tAddress to listen on (e.g., :8080) (default \":0\")\n")
+		fmt.Fprintf(os.Stderr, "  --ssh-target string\n")
+		fmt.Fprintf(os.Stderr, "    \tSSH server to proxy to (default \"127.0.0.1:22\")\n")
+		fmt.Fprintf(os.Stderr, "  --target-fqdn string\n")
+		fmt.Fprintf(os.Stderr, "    \tFQDN to register in DNS\n")
+	}
 	flag.Parse()
 
 	// Get values from environment if not provided via flags

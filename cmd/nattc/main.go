@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -17,6 +18,16 @@ func main() {
 		targetFQDN  = flag.String("target", "", "Target FQDN to connect to (natts server)")
 		proxyMode   = flag.Bool("proxy", false, "Run in ProxyCommand mode (stdin/stdout)")
 	)
+	// Custom usage function
+	flag.Usage = func() {
+		fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  --listen string\n")
+		fmt.Fprintf(os.Stderr, "    \tAddress to listen on for SSH connections (server mode) (default \":10022\")\n")
+		fmt.Fprintf(os.Stderr, "  --proxy\n")
+		fmt.Fprintf(os.Stderr, "    \tRun in ProxyCommand mode (stdin/stdout)\n")
+		fmt.Fprintf(os.Stderr, "  --target string\n")
+		fmt.Fprintf(os.Stderr, "    \tTarget FQDN to connect to (natts server)\n")
+	}
 	flag.Parse()
 
 	// Get target FQDN from environment if not provided via flag
