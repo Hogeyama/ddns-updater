@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/Hogeyama/ddns-updater/internal/dns"
@@ -18,6 +19,12 @@ type Server struct {
 	sshTarget  string
 	targetFQDN string
 	listener   *kcp.Listener
+
+	// Connection tracking
+	connMutex    sync.RWMutex
+	activeConns  int
+	lastConnTime time.Time
+	localPort    int
 }
 
 type Config struct {
@@ -28,9 +35,10 @@ type Config struct {
 
 func New(cfg Config) (*Server, error) {
 	return &Server{
-		cfToken:    cfg.CFToken,
-		sshTarget:  cfg.SSHTarget,
-		targetFQDN: cfg.TargetFQDN,
+		cfToken:      cfg.CFToken,
+		sshTarget:    cfg.SSHTarget,
+		targetFQDN:   cfg.TargetFQDN,
+		lastConnTime: time.Now(),
 	}, nil
 }
 
@@ -73,6 +81,8 @@ func (s *Server) Start(ctx context.Context, listenAddr string) error {
 		}
 	}
 
+	s.localPort = localPort
+
 	// Start KCP listener on the determined port
 	listener, err := kcp.ListenWithOptions(listenAddr, nil, 10, 3)
 	if err != nil {
@@ -82,6 +92,9 @@ func (s *Server) Start(ctx context.Context, listenAddr string) error {
 
 	actualAddr := listener.Addr().(*net.UDPAddr)
 	log.Printf("natts: KCP listener started on %s (actual port: %d)", listenAddr, actualAddr.Port)
+
+	// Start connection monitoring
+	go s.connectionMonitor(ctx)
 
 	// Accept connections
 	go s.acceptLoop(ctx)
@@ -131,6 +144,27 @@ func (s *Server) handleConnection(kcpConn *kcp.UDPSession) {
 
 	log.Printf("natts: new connection from %s", kcpConn.RemoteAddr())
 
+	// Configure KCP session timeout
+	kcpConn.SetDeadline(time.Now().Add(5 * time.Minute))
+
+	// Track connection start
+	s.connMutex.Lock()
+	s.activeConns++
+	connCount := s.activeConns
+	s.connMutex.Unlock()
+
+	log.Printf("natts: active connections: %d", connCount)
+
+	// Track connection end
+	defer func() {
+		s.connMutex.Lock()
+		s.activeConns--
+		s.lastConnTime = time.Now()
+		connCount := s.activeConns
+		s.connMutex.Unlock()
+		log.Printf("natts: connection closed, active connections: %d", connCount)
+	}()
+
 	// Connect to local SSH server
 	sshConn, err := net.DialTimeout("tcp", s.sshTarget, 10*time.Second)
 	if err != nil {
@@ -159,8 +193,39 @@ func (s *Server) handleConnection(kcpConn *kcp.UDPSession) {
 	if err != nil {
 		log.Printf("natts: proxy error: %v", err)
 	}
+}
 
-	log.Printf("natts: connection closed")
+func (s *Server) connectionMonitor(ctx context.Context) {
+	ticker := time.NewTicker(30 * time.Second) // Check every 30 seconds
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.connMutex.RLock()
+			activeConns := s.activeConns
+			lastConnTime := s.lastConnTime
+			s.connMutex.RUnlock()
+
+			// If no active connections and it's been 10 minutes since last connection
+			if activeConns == 0 && time.Since(lastConnTime) > 10*time.Minute {
+				log.Printf("natts: no connections for 10 minutes, restarting STUN discovery")
+
+				// Restart STUN discovery and DNS registration
+				if err := s.discoverAndRegister(s.localPort); err != nil {
+					log.Printf("natts: failed to restart STUN discovery: %v", err)
+				} else {
+					// Update last connection time to prevent immediate re-trigger
+					s.connMutex.Lock()
+					s.lastConnTime = time.Now()
+					s.connMutex.Unlock()
+					log.Printf("natts: STUN discovery completed")
+				}
+			}
+		}
+	}
 }
 
 func (s *Server) Close() error {
@@ -169,3 +234,4 @@ func (s *Server) Close() error {
 	}
 	return nil
 }
+

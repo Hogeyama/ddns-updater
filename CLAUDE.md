@@ -80,7 +80,7 @@ go build -o nattc ./cmd/nattc
 go test ./...
 
 # Run end-to-end tests (run after any modifications)
-nix develop -c ./test-e2e.sh
+(source .envrc.local && ./test-e2e.sh)
 
 # Run applications (require environment variables)
 ./natts         # NAT traversal server (NAT内で実行)
