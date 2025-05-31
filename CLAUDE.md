@@ -67,7 +67,7 @@ go test ./...
 ## Dependencies and External Services
 
 - `github.com/cloudflare/cloudflare-go` - Cloudflare API client
-- `github.com/pion/stun` - STUN protocol implementation  
+- `github.com/pion/stun` - STUN protocol implementation
 - `github.com/xtaci/kcp-go/v5` - KCP (reliable UDP) library for secure, ordered UDP transmission
 - **Cloudflare account** with API token having DNS edit permissions
 - **Domain managed by Cloudflare** for DNS record updates
@@ -94,3 +94,24 @@ The project uses Go modules and Nix flakes for dependency management and reprodu
 - [x] Add end-to-end testing script for complete workflow validation
 
 ### TODO
+
+#### Architecture Improvements
+
+**High Priority:**
+
+- [ ] Externalize hardcoded configuration values (STUN server, TXT record prefix, KCP parameters)
+- [ ] Fix TXT record double-quoting issue and verify proper cloudflare-go library usage
+- [ ] Refactor natts.Server.Start method complexity (responsibility separation, method splitting)
+
+**Medium Priority:**
+
+- [ ] Improve STUN error handling (properly handle SetDeadline errors)
+- [ ] Introduce structured logging (log/slog or external library like zap/logrus)
+- [ ] Fix context usage (use passed ctx instead of context.Background() in DNS operations)
+- [ ] Implement graceful shutdown for active connections in natts server
+- [ ] Deduplicate code between nattc/client.go and nattc/proxy.go into common helper functions
+
+**Low Priority:**
+
+- [ ] Optimize Cloudflare API client reuse (avoid repeated initialization)
+- [ ] Improve testability through interface abstraction (Cloudflare API, STUN, KCP mocking)
