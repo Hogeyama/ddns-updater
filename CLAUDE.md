@@ -137,22 +137,50 @@ CF_API_TOKEN=your_token TARGET_FQDN=mypc.example.com ./natts --ssh-target 127.0.
 # Start nattc client that connects to natts via DNS resolution
 ./nattc --listen :10022 --target mypc.example.com
 
-# Now SSH to the NAT-ed machine via the proxy
-ssh -p 10022 localhost
+# Now SSH to the NAT-ed machine via the proxy (with KeepAlive)
+ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=3 -p 10022 localhost
 ```
 
 #### Option 2: ProxyCommand Mode (Recommended)
 
 ```bash
-# Direct SSH connection using ProxyCommand
-ssh -o ProxyCommand='./nattc --proxy --target mypc.example.com' user@dummy
+# Direct SSH connection using ProxyCommand with KeepAlive
+ssh -o ProxyCommand='./nattc --proxy --target mypc.example.com' \
+    -o ServerAliveInterval=60 \
+    -o ServerAliveCountMax=3 \
+    user@dummy
 
 # Or add to ~/.ssh/config:
 # Host mypc
 #     ProxyCommand /path/to/nattc --proxy --target mypc.example.com
 #     User your_username
+#     ServerAliveInterval 60
+#     ServerAliveCountMax 3
 #
 # Then simply: ssh mypc
+```
+
+### Important: SSH KeepAlive Configuration
+
+**KeepAlive settings are essential** because natts uses a 5-minute connection timeout. Without KeepAlive, idle SSH sessions will be disconnected after 5 minutes.
+
+**Recommended SSH client settings:**
+- `ServerAliveInterval 60` - Send keepalive every 60 seconds
+- `ServerAliveCountMax 3` - Allow up to 3 missed keepalives
+
+**For ~/.ssh/config:**
+```
+Host mypc
+    ProxyCommand /path/to/nattc --proxy --target mypc.example.com
+    User your_username
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+```
+
+**For SSH server (/etc/ssh/sshd_config):**
+```
+ClientAliveInterval 60
+ClientAliveCountMax 3
 ```
 
 ## Dependencies
