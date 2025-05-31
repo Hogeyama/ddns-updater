@@ -154,14 +154,9 @@ The project uses Go modules and Nix flakes for dependency management and reprodu
 - [x] Update build system to include both natts and nattc binaries
 - [x] Update documentation to explain the new proxy architecture and usage
 
-### Future Enhancements
+### TODO
 
-- [ ] Add configuration file support for natts/nattc
-- [ ] Implement connection pooling and load balancing
-- [ ] Add metrics and monitoring endpoints
-- [ ] Support for multiple SSH targets in natts
-- [ ] Add authentication/authorization for proxy connections
-- [ ] Implement graceful reconnection and retry logic
-- [ ] Add support for other protocols beyond SSH
-- [ ] Performance optimization and benchmarking
-- [ ] Add Docker containers and deployment scripts
+- [ ] internal/dns/updater.goは既存のレコードが存在しない場合にエラーになる。存在しなければ新規作成すべき
+- [ ] internal/nattc/client.goとinternal/nattc/proxy.goの実装に重複がある
+- [ ] 環境変数だけではなくコマンドライン引数で設定できるようにする
+
