@@ -96,7 +96,7 @@ Command-line flags:
 - `--cf-token` - Cloudflare API token with DNS edit permissions
 - `--target-fqdn` - Fully qualified domain name to update
 - `--ssh-target` - SSH server to proxy to (default: "127.0.0.1:22")
-- `--listen` - Address to listen on (default: ":0")
+- `--listen` - Address to listen on (default: ":30000")
 
 Environment variables (fallback):
 
@@ -121,10 +121,10 @@ Environment variables (fallback):
 
 ```bash
 # Start natts server that will register itself in DNS
-./natts --cf-token your_token --target-fqdn mypc.example.com --ssh-target 127.0.0.1:22 --listen :0
+./natts --cf-token your_token --target-fqdn mypc.example.com --ssh-target 127.0.0.1:22 --listen :30000
 
 # Or using environment variables
-CF_API_TOKEN=your_token TARGET_FQDN=mypc.example.com ./natts --ssh-target 127.0.0.1:22 --listen :0
+CF_API_TOKEN=your_token TARGET_FQDN=mypc.example.com ./natts --ssh-target 127.0.0.1:22 --listen :30000
 ```
 
 ### Running nattc (on external machine, e.g., EC2)
