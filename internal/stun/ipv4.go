@@ -8,16 +8,16 @@ import (
 	"github.com/pion/stun"
 )
 
-func GetIPv4AndAvailableTcpPort() (string, int, error) {
+func GetIPv4AndAvailablePort() (string, int, error) {
 	const stunServer = "stunserver2025.stunprotocol.org:3478"
 
-	remoteAddr, err := net.ResolveTCPAddr("tcp", stunServer)
+	remoteAddr, err := net.ResolveUDPAddr("udp", stunServer)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to resolve STUN server address: %w", err)
 	}
 
-	// TCPでSTUNサーバに接続
-	conn, err := net.DialTCP("tcp", nil, remoteAddr)
+	// UDPでSTUNサーバに接続
+	conn, err := net.DialUDP("udp", nil, remoteAddr)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to connect to STUN server: %w", err)
 	}

@@ -49,7 +49,7 @@ func (s *Server) Start(ctx context.Context, listenAddr string) error {
 	var localPort int
 	if listenAddr == ":0" {
 		// For port 0, we need to discover first, then bind to that port
-		externalIP, externalPort, err := stun.GetIPv4AndAvailableTcpPort()
+		externalIP, externalPort, err := stun.GetIPv4AndAvailablePort()
 		if err != nil {
 			return fmt.Errorf("failed to discover external IP and port: %w", err)
 		}
