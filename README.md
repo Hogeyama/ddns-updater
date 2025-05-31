@@ -6,8 +6,8 @@ A Go-based NAT traversal system for SSH connections using Cloudflare DNS for ser
 
 ## Architecture
 
-**Target scenario**: External host (e.g., EC2) connects to PC behind full-cone NAT via SSH  
-(e.g., `ssh -p 10022 localhost` on EC2 connects to NAT-ed PC's SSH server)
+**Target scenario**: External host connects to PC behind full-cone NAT via SSH  
+(e.g., `ssh -p 10022 localhost` connects to NAT-ed PC's SSH server)
 
 ```
 [SSH Client]
@@ -104,7 +104,7 @@ Environment variables (fallback):
 CF_API_TOKEN=your_token TARGET_FQDN=mypc.example.com ./natts --ssh-target 127.0.0.1:22 --listen :30000
 ```
 
-### Step 2: Run nattc (on external machine, e.g., EC2)
+### Step 2: Run nattc (on external machine)
 
 #### Option 1: Server Mode (TCP Listener)
 
